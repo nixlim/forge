@@ -40,9 +40,39 @@ need manual merge and include them in Phase 5's summary. Verify with `git status
 the expected tree appeared (`.opencode/`, `.claude/`, `AGENTS.md`, `CLAUDE.md`,
 `opencode.jsonc`, `.forge-manifest`).
 
+## Phase 1.5 — Explore the existing repo (brownfield)
+
+If the repo has existing code, CI, or conventions, run the exploration protocol in
+`/Users/nixlim/Sync/PROJECTS/foundry_zero/forge/system/seeds/brownfield-exploration.md`
+BEFORE filling any region. **Principle: mirror the repo's existing reality — never
+invent a parallel one.** In brief:
+
+1. **CI mining** — read the actual pipeline definitions (GitHub Actions, GitLab,
+   Buildkite, Jenkins, CircleCI…); the commands CI runs are the source of truth for
+   `stack-validations` and `gate1-test-command`, so a local PASS predicts a green
+   pipeline.
+2. **Convention mining** — existing linters/formatters (never introduce different
+   ones), commit/PR conventions, changelog reality, CODEOWNERS, protected-branch
+   required checks. If history shows merge commits or a PR-merge process, surface
+   the conflict with the system's linear-history rule and record the user's decision.
+3. **History mining** — recurring fix/revert patterns become `project-triggers` rows
+   with real citations; the hottest depended-on module is the blast-radius candidate.
+4. **Docs indexing** — build the `project-docs` table from docs that actually exist;
+   map module layout into per-agent `agent-project-context` regions; detect monorepos
+   (path-scoped validations).
+5. **Existing agent tooling** — read any pre-existing `AGENTS.md`/`.claude/`/
+   `.opencode/` content (preserved as `*.forge-new` by the installer) and propose a
+   merge; never discard existing agent instructions unread.
+
+For large repos, fan these out to parallel read-only exploration subagents and
+synthesize. Record in the Phase 5 summary both what was found and what was looked
+for but absent. A greenfield repo (no code yet) skips this phase — say so.
+
 ## Phase 2 — Per-project layer (the judgment work)
 
-Fill every `<!-- FORGE:REGION ... -->` block. Find them all first:
+Fill every `<!-- FORGE:REGION ... -->` block **from the Phase 1.5 findings** — every
+filled region should be traceable to something the exploration found. Find them all
+first:
 ```bash
 grep -rn "FORGE:REGION" --include="*.md" --include="*.jsonc" .opencode .claude AGENTS.md opencode.jsonc 2>/dev/null | grep BEGIN
 ```
@@ -96,6 +126,12 @@ no-ops for completed work:
 11. `opencode.jsonc`: verify the model IDs against this machine
     (`opencode models` if opencode is installed; otherwise leave the VERIFY comment in
     place and tell the user).
+
+Before leaving Phase 2, verify the customization against reality (protocol §6): run
+the assembled validation and Gate-1 commands once on the clean tree — they must pass
+(a gate that fails on untouched code is miscalibrated); confirm every command cited
+in a region actually exists in the repo; time Gate-1 and split targeted vs
+blast-radius if it is too slow for a per-merge gate.
 
 ## Phase 3 — Eval baselines
 

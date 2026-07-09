@@ -13,3 +13,7 @@ CLAUDE.md
 # scratch
 .tmp/
 *.local.md
+
+# gitnexus index + generated per-repo skills (regenerate with: npx gitnexus analyze)
+.gitnexus
+/.claude/skills/gitnexus/

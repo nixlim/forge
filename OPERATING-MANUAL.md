@@ -65,10 +65,13 @@ flowchart TD
     A["/forge-init in target repo"] --> B["Phase 1 — forge-install.sh
     copy engine + templates
     tokens, branch rewrite, gitignore, manifest"]
-    B --> C["Phase 2 — per-project layer
-    stack detection, validation tables,
-    Gate-1 test command, review triggers,
-    AGENTS.md project sections"]
+    B --> BE["Phase 1.5 — brownfield exploration
+    mine CI, conventions, git history,
+    docs, existing agent tooling"]
+    BE --> C["Phase 2 — per-project layer
+    regions filled FROM the findings:
+    validation tables, Gate-1 command,
+    review triggers, AGENTS.md sections"]
     C --> D["Phase 3 — eval baselines
     3 fixtures concretized, verdicts recorded"]
     D --> E["Phase 4 — gate chain on the install
@@ -81,6 +84,15 @@ flowchart TD
 
 Notes:
 
+- **Brownfield repos** (existing code, CI, conventions) get an exploration phase
+  before any region is filled — protocol in `system/seeds/brownfield-exploration.md`.
+  The rule: mirror the repo's existing reality, never invent a parallel one. Gate-1
+  and the validations run what CI actually runs; triggers come from the repo's real
+  fix/revert history; the docs table indexes docs that exist; existing linters and
+  commit conventions are adopted, not replaced; conflicts with the system's defaults
+  (e.g. a merge-commit history vs. the linear-history rule) are surfaced for a human
+  decision, not silently imposed. The assembled gates are then proven against the
+  clean tree — a gate that fails on untouched code is miscalibrated.
 - `forge-install.sh` alone gives a *mechanical* install: correct files, but every
   `FORGE:REGION` still holds its fail-closed default (Gate 1 exits 1; stack
   validations refuse to pass). This is deliberate — an uninitialized system cannot
