@@ -1,0 +1,223 @@
+# Pre-Commit Workflow
+
+Run this workflow whenever a unit of work is complete — or when the user asks to
+commit — and you MUST complete it before creating the commit. Under the
+[[operating-model]] (DVRR), this gate chain (classify → validate → changelog →
+adversarial review with a PASS verdict, re-verifying after any fix → commit) is
+**the authority that replaces human pre-approval**: once every non-skipped step
+passes, commit and push autonomously without waiting to be asked. Each step is mandatory unless
+explicitly skipped by the user, and the chain is **fail-closed** — if any
+non-skipped step fails (tests red, review BLOCK, review subagent unavailable),
+do NOT commit; surface the failure and leave the work for inspection.
+
+## Parallel Session Safety
+
+Multiple opencode sessions may be running concurrently on the same repository. To avoid conflicts:
+
+1. **Use commit lock for all git operations.** Acquire the lock once after validation/review passes and before staging files (see Step 5). Release after commit completes (success or failure). Never hold the lock during validation or review as this blocks other sessions unnecessarily.
+2. **Always release lock.** After commit completes (success or failure), run `.opencode/scripts/release-commit-lock.sh`. Use this pattern:
+   ```bash
+   .opencode/scripts/acquire-commit-lock.sh && {
+       # ... commit workflow steps ...
+       .opencode/scripts/release-commit-lock.sh
+   } || {
+       .opencode/scripts/release-commit-lock.sh
+       exit 1
+   }
+   ```
+3. **Only commit files you changed in THIS session.** Never stage or commit files modified by another session. Before staging, run `git status` and cross-reference with the files you know you created or edited. If in doubt, ask the user.
+4. **Re-read before editing.** Always re-read a file immediately before editing it. Another session may have modified it since you last read it.
+5. **Check for conflicts before committing.** Run `git status` right before `git commit`. If files you intend to commit show unexpected changes (modified by another session between your edit and the commit), stop and ask the user.
+6. **Never run `git add .` or `git add -A`.** Always stage files individually by explicit path. Blanket staging will pick up changes from other sessions.
+7. **Pull before push.** Push happens autonomously once the gate chain passes (or when the user asks). Always run `git pull --rebase` first — another session may have pushed commits since your last check.
+8. **Lock-sensitive operations.** Terraform state is locked via DynamoDB. If `terraform plan` or `terraform apply` fails with a lock error, another session is running Terraform — do not retry, inform the user.
+9. **Branch awareness.** If working on a feature branch, verify you are on the correct branch before committing. Another session may have switched branches.
+
+## Step 1: Classify Changed Files
+
+Run `git status --short` to see all changed, staged, and untracked files. From the files you changed in this session, classify each into one or more categories:
+
+| Category | File patterns |
+|----------|--------------|
+| `bash` | `*.sh` |
+| `docs` | `*.md`, `docs/**` |
+| `config` | `.gitignore`, `*.yml`, `*.yaml`, `*.json` (non-terraform) |
+| `control` (AI component) | `.opencode/rules/**`, `.opencode/agents/**`, `.claude/agents/**`, `.opencode/commands/**`, `.claude/commands/**`, `.opencode/skills/**`, `.opencode/plugins/**`, `.opencode/scripts/**`, `opencode.jsonc`, `.claude/settings*.json`, the review constitution, and CI / test-gate definitions — i.e. changes to **the controls AI is judged by** (the command/skill/plugin/script files that drive the gate chain are themselves controls — a degraded `/commit` is a fail-open hole) |
+
+<!-- FORGE:REGION file-categories BEGIN -->
+<!-- forge-init: generate one row per detected stack (language / build / infra tooling) extending the category table above, drawing the patterns and their matching validations from forge/system/seeds/validation-snippets. Each row is `| <category> | <file patterns> |`. -->
+
+**Stack-specific categories (extend the table above).** No stack categories are
+configured yet — until `/forge-init` populates this region, only the generic
+`bash`, `docs`, `config`, and `control` categories apply:
+
+| Category | File patterns |
+|----------|--------------|
+| `<stack>` _(placeholder)_ | `<file patterns for this project's stack>` |
+<!-- FORGE:REGION file-categories END -->
+
+A commit may contain files from multiple categories. Run ALL applicable validations.
+
+**Higher-scrutiny control class.** If any changed file is in the `control`
+(AI-component) category, this is a **higher-scrutiny change** ([[control-integrity]],
+[[risk-authority-classification]]). It is **NOT act-autonomously**: it additionally
+requires (a) the evaluation harness in Step 2, (b) the **authoritative `review-final`**
+reviewer in Step 4 — a distinct agent from the one that authored the change
+(**separation of duties**) — and (c) **gated approval**: surface the change and the
+review verdict to the user and get explicit approval before committing, rather than
+auto-committing on PASS.
+
+## Step 2: Run Category-Specific Validations
+
+Validation principle: prefer executable verification over static inspection. When a file can be executed, built, rendered, or planned, run that command and use its output as evidence.
+
+**Control integrity:** never weaken, disable, skip, or game a gate to make it pass — a gate satisfied by lowering its bar is a *failure*, not a pass. If a test or rule is genuinely wrong, fix it openly as a higher-scrutiny control change, not as a silent workaround. See [[control-integrity]].
+
+**Licence / IP provenance:** for generated code, do not reproduce non-trivial verbatim third-party blocks, and ensure any new dependency carries an Apache-2.0-compatible licence — escalate copyleft/incompatible cases rather than committing them. See [[licence-provenance]].
+
+### Control / AI-component changes (`control`)
+
+Changes to the controls AI is judged by (rules, agent prompts, `opencode.jsonc`, the review constitution, CI/test gates) MUST run the evaluation harness as a gate:
+
+```bash
+bash .opencode/evals/run-evals.sh    # exits non-zero on a regressed golden task or a malformed fixture
+```
+
+A **regression** (a recorded `.result` flips from its expected verdict) or a malformed fixture **blocks** the change ([[evaluation-harness]]). Where the baseline for an affected agent is missing (fixtures show `PENDING`), establish it — run the agent on the relevant fixtures and record the results — or record the gap as residual risk for the user's gated approval. (This is in addition to the per-category validations above, e.g. `docs`/`config` link and JSON checks.)
+
+### Bash script changes (`bash`)
+1. Run `bash -n <script>` for each changed script to verify syntax
+2. Verify the script is executable (`chmod +x` if needed)
+3. Execute each changed script using the safest available runtime mode (`--help`, `--version`, `--dry-run`, or equivalent)
+4. **Exception:** `.opencode/scripts/acquire-commit-lock.sh` and `.opencode/scripts/release-commit-lock.sh` have NO safe runtime mode (they perform lock I/O immediately). For these scripts, validate ONLY with `bash -n` and manual inspection.
+5. If no safe runtime mode exists for other scripts, run the script with benign inputs in an isolated context or stop and ask the user for an explicit skip
+
+### Documentation changes (`docs`)
+1. No tests required
+2. Verify any internal links/cross-references point to files that exist (quick glob check)
+
+### Config changes (`config`)
+1. Validate YAML/JSON syntax if applicable
+2. Run command-level verification when a tool-specific check exists (for example `jq` for JSON transforms, `yamllint` when available, or app-specific validation commands)
+
+<!-- FORGE:REGION stack-validations BEGIN -->
+<!-- forge-init: replace with one validation subsection per detected stack category (e.g. the language's unit-test command, formatter / linter check, build, IaC validate/plan), sourced from forge/system/seeds/validation-snippets and keyed to the `file-categories` region in Step 1. -->
+
+**No stack validations are configured yet.** The gate chain is **fail-closed**:
+until `/forge-init` populates this region with the project's per-category
+validation commands, a unit that touches stack code has **no executable
+validation to satisfy** — it MUST NOT be committed as "validated". Run
+`/forge-init` first.
+<!-- FORGE:REGION stack-validations END -->
+
+## Step 3: Changelog Review (MANDATORY for all commits)
+
+<!-- FORGE:REGION changelog-policy BEGIN -->
+<!-- forge-init: if this project keeps a changelog, replace this region with the changelog gate — which file, which sections (Added/Changed/Fixed or equivalent), what counts as user-facing, and how entries are staged with the commit for the Step 4 review diff. -->
+
+This project has no changelog gate configured. State explicitly during the
+commit workflow that the changelog step is not applicable.
+<!-- FORGE:REGION changelog-policy END -->
+
+## Step 4: Adversarial Code Review (MANDATORY for all commits)
+
+After validations and the changelog review pass, launch an adversarial review using a subagent with a **fresh context** (a different model where a stronger tier is provisioned; on opencode, fresh context + low temperature — see `docs/operations/opencode-configuration.md`). The reviewer MUST be a distinct agent from the one that authored the change (**separation of duties**). This catches issues the implementing agent may have blind spots for.
+
+**Control / AI-component changes use the authoritative `review-final`** (not `review-cheap`), and are **gated-approval, not act-autonomously**: after a PASS, present the change and the verdict to the user and get explicit approval before committing (per the higher-scrutiny note in Step 1). All other changes use `review-cheap` as below.
+
+Spawn the review subagent (`review-cheap` by default, `review-final` for control changes; use the Agent tool in Claude Code, the Task tool in opencode) and provide:
+- The diff of files being committed: stage them first with `git add`, then capture `git diff --cached`
+- The commit message you intend to use
+- The file categories from Step 1
+
+The review prompt MUST include:
+```
+Review these changes adversarially using `.opencode/rules/review-constitution.md`.
+
+Apply all 8 lenses (Ambiguity, Incompleteness, Inconsistency, Infeasibility, Insecurity, 
+Inoperability, Incorrectness, Overcomplexity) as the baseline, and additionally apply the 
+matching per-artefact profile — select it from the profiles table in the constitution 
+(e.g. review-coding for code+tests, review-deployment for infra/IaC, review-documentation 
+for docs). The profile extends the baseline; it never lets you skip a lens. Pay special attention to:
+- Hallucinated function/method/module names that don't exist (COR-07)
+- Plausible-looking but incorrect logic (COR-05)
+- Missing error handling or edge cases (INC-01, INC-07)
+- Security issues (SEC-06: secrets in logs, SEC-05: input validation, SEC-12: template injection)
+<!-- FORGE:REGION review-prompt-project-focus BEGIN -->
+<!-- forge-init: add project-specific review-focus bullets here (e.g. resource-safety, dependency-namespace, module-boundary, and consumer-doc concerns for this stack), each citing the matching "Project-specific:" principle IDs added to the lens tables in review-constitution.md. Leave empty if none. -->
+<!-- FORGE:REGION review-prompt-project-focus END -->
+
+Format findings with principle IDs (e.g., [SEC-06] CRITICAL: ...).
+Complete the Review Completeness Check.
+Provide PASS or BLOCK verdict with severity-ranked findings.
+```
+
+**Security:** Before sending the diff to the reviewer, scan for obvious secrets (API keys, tokens, passwords, `.env` content). If found, warn the user and do NOT include the secret values in the review prompt — redact them or exclude those files from the review.
+
+If the review returns **BLOCK**, fix the issues, re-run any affected validations (Step 2), and re-run the review before committing. Iterate until the review returns PASS — but you **MUST cap the loop at 8 review iterations** (per the Iteration Protocol in [[review-constitution]]). If 8 iterations complete without a PASS, **do not commit**: record the unresolved residual risk explicitly (the outstanding findings and why they remain) and escalate to the user rather than reintegrating as if converged.
+If the review returns **PASS**, proceed to commit.
+
+## Step 5: Acquire Lock and Commit
+
+Only after all validations, the changelog review, and the adversarial review pass:
+
+0. **Check the operator halt**: Run `.opencode/scripts/check-halt.sh commit` (checks the global `AGENT_HALT` and the scoped `AGENT_HALT_commit`). If it exits non-zero, an operator has engaged the kill-switch — **do not commit**; stop and wait (see [[operator-halt]]).
+1. **Acquire commit lock**: Run `.opencode/scripts/acquire-commit-lock.sh`
+   - If lock is held by another session, this will wait (up to 5 minutes)
+   - If lock acquisition fails, stop and inform the user
+2. **Verify staged files**: Run `git status` to ensure only your session's files are staged
+3. **Create commit**: Run `git commit` with a descriptive message — the commit message is the durable record of *why* and *what*. For a significant or escalated unit, also capture the fuller decision trail (model/temperature, assumptions, review findings + disposition, evidence) per [[decision-log]]. For a significant or control-class unit, additionally record the per-stage timing in a `telemetry` block in `.tmp/decisions/<id>.md` per [[decision-log]] — local-validation time broken down by check type (`stage.validate.unit_s`, `stage.validate.it_s`, `stage.build.docker_s`, plus lint/static checks) and rework cost (`review_iterations`, `rework_s`).
+4. **Release lock**: Run `.opencode/scripts/release-commit-lock.sh` (ALWAYS, even if commit fails)
+
+**IMPORTANT**: Use this bash pattern to ensure lock is always released:
+```bash
+export OPENCODE_SESSION_PID=$$
+.opencode/scripts/acquire-commit-lock.sh && {
+    git status  # verify only your files
+    git commit -m "message"
+    .opencode/scripts/release-commit-lock.sh
+} || {
+    .opencode/scripts/release-commit-lock.sh
+    exit 1
+}
+```
+
+The `OPENCODE_SESSION_PID` environment variable tracks the parent shell PID to handle subshell execution correctly.
+
+## Skip Conditions
+
+- If the user says "skip tests" or "skip validation" — skip Step 2 but still run Steps 3 and 4 (changelog and adversarial review)
+- If the user says "skip changelog" — skip Step 3 but still run Steps 2 and 4
+- If the user says "skip review" — skip Step 4 but still run Steps 2 and 3 (validations and changelog)
+- If the user says "just commit" or "skip everything" — skip Steps 2, 3 and 4
+- Always warn the user what is being skipped
+
+## Quick Reference
+
+```mermaid
+flowchart TD
+    A["Unit of work complete
+    (or user asks to commit)"] --> B{Only MY files?}
+    B -->|Yes| C["Classify files per category table"]
+    B -->|No / unsure| STOP["Stop — ask user"]
+    C --> D["Run validations per category"]
+    D --> CL["Changelog review
+    update changelog if user-facing"]
+    CL --> E["Adversarial review
+    review-cheap agent via Task tool
+    fresh context, different model"]
+    E --> F{PASS?}
+    F -->|Yes| HALT{"Operator halt?"}
+    HALT -->|"engaged"| HSTOP["Stop — wait for operator"]
+    HALT -->|"clear"| G["Acquire commit lock
+    acquire-commit-lock.sh"]
+    F -->|"No (<8 iters)"| H["Fix issues"] --> D
+    F -->|"No (8th iter)"| CAP["Record residual risk
+    escalate — do NOT commit"]
+    G --> I{Lock acquired?}
+    I -->|Yes| J["Verify staged files
+    Create commit
+    Release lock"]
+    I -->|No| WAIT["Wait or cancel"]
+    J --> DONE["Done"]
+```

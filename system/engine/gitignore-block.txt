@@ -1,0 +1,14 @@
+# --- forge agent system (appended by forge-install.sh) --- #
+# scratch directory for agent sessions #
+/.tmp/*
+!/.tmp/.gitkeep
+# git worktrees for parallel agent sessions #
+.worktrees/
+# operator halt sentinels (kill-switch) #
+/AGENT_HALT
+/AGENT_HALT_*
+# commit lock (parallel session safety) #
+/.tmp/.commit-lock
+# local (uncommitted) plan documents #
+*.local.md
+# --- end forge agent system --- #

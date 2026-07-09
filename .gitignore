@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+
+# local logging/memory plugin droppings (recreated constantly; never payload)
+.devlog/
+CLAUDE.md
+# ...except the vendored @AGENTS.md pointer, which IS payload
+!system/engine/CLAUDE.md
+
+# scratch
+.tmp/
+*.local.md

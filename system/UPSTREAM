@@ -1,0 +1,60 @@
+# Forge system — upstream provenance
+#
+# This directory vendors the AI-SDLC agent operating system from:
+#
+#   repo:    https://github.com/mock-server/mockserver-monorepo
+#   commit:  7febd65f0815caf57855fae54ba3df3915376cc6
+#   date:    2026-07-06
+#   license: Apache-2.0 (see LICENSE-upstream in this directory)
+#   author:  James Bloom / MockServer project
+#
+# Layout:
+#   engine/    Tier-1 files, kept byte-identical to upstream wherever possible so
+#              `diff -r` against a fresh clone shows (a) our deliberate changes and
+#              (b) upstream improvements to pull. Deliberate modifications carry a
+#              one-line "# forge: modified from upstream — <reason>" marker.
+#   template/  Tier-2 files derived from upstream with project-specific regions
+#              replaced by {{FORGE_*}} tokens and <!-- FORGE:REGION ... --> blocks.
+#              These are NOT byte-identical; diff against upstream at the section level.
+#   seeds/     Tier-3 material generated fresh per install (eval task templates,
+#              per-stack validation snippets). No upstream counterpart.
+#
+# Known deliberate deviations from upstream @ 7febd65f:
+#   - engine/.opencode/scripts/{acquire,release}-commit-lock.sh: generic error message
+#     (was "the MockServer repository").
+#   - BUG FIXES found during e2e testing (candidates to report upstream):
+#     1. engine/.opencode/scripts/agent-status.sh: resolves the MAIN checkout via
+#        `git rev-parse --git-common-dir` — upstream's --show-toplevel returns the
+#        worktree root when run from inside a worktree (the default place sessions
+#        live), so it never found .worktrees/.
+#     2. template/.opencode/rules/worktree-workflow.md + .claude/commands/worktree-merge.md:
+#        rebase lock path uses the shared git common dir — upstream's relative
+#        ".git/agent-rebase.lock" breaks inside a worktree, where .git is a pointer
+#        FILE, exactly where the merge step runs.
+#     3. Same files: corrected upstream's claim that flock is "present by default on
+#        macOS" (it is not; util-linux tool) — availability must be checked and the
+#        mkdir mutex used as the standard fallback, never skipping the lock.
+#   - rules/subagent-routing.md moved engine -> template: its conversational routing
+#     table is per-project (upstream rows referenced dropped Buildkite/AWS skills);
+#     now a FORGE:REGION.
+#   - review-constitution.md: re-added GENERICIZED rows for 7 upstream project-specific
+#     principles whose stable IDs are cited by the installed review skills (AMB-08,
+#     CON-07, CON-08, SEC-11, OPS-09, OPS-10, COR-08) — deleting them left dangling
+#     citations. Two truly project-specific citations fixed at the call site instead:
+#     review-code SKILL CPX-11 -> CPX-01/CPX-04; review-code commands' example
+#     [COR-10] -> [COR-05].
+#   - Dropped as MockServer-specific ops tooling (not part of the portable system):
+#     rules/aws-ids-file.md; commands/skills for aws-investigation,
+#     pipeline-investigation, browser-auth, build-monitor, dependabot-snyk-pr-management,
+#     docker-build-push, dockerhub-credentials, pr-monitor, prepare-release,
+#     release-management, renew-test-certs, terraform-tfvars, ui-screenshots;
+#     plugins/buildkite-status.ts; the changelog-specific gate content.
+#   - Model routing per forge/docs/06-discussion-outcome.md: opencode → GLM 5.2 (strong)
+#     / M3 (weak); Claude Code → fable (strong) / opus (weak), upstream effort values
+#     kept; Codex keeps upstream's OpenAI tiers.
+#   - Default-branch substitution: all files keep upstream's literal `master`; the
+#     installer rewrites branch references when the target repo's default branch differs
+#     (recorded in the install manifest).
+#
+# Sync procedure: clone upstream, `diff -r engine/ <clone>` (path-mapped), review hunks,
+# pull what applies, bump the commit hash + date above.

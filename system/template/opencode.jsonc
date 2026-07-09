@@ -1,0 +1,158 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // {{FORGE_PROJECT_NAME}} opencode configuration
+  // forge routing: strong=zai/glm-5.2, weak=minimax/MiniMax-M3 — VERIFY exact provider/model IDs against `opencode models` on this machine; auth via `opencode auth login` for Z.AI and MiniMax. Codex installs keep upstream's OpenAI tiers (gpt-5 / gpt-4o / gpt-4o-mini).
+  "compaction": {
+    "auto": true,
+    "prune": true
+  },
+  "share": "manual",
+  "default_agent": "plan",
+  "small_model": "minimax/MiniMax-M3",
+  "provider": {
+    "zai": {},
+    "minimax": {}
+  },
+  "enabled_providers": ["zai", "minimax"],
+  "instructions": [
+    "AGENTS.md"
+  ],
+  "watcher": {
+    // forge-init may extend this list per stack (e.g. language- or tool-specific build/output dirs)
+    "ignore": [
+      "**/node_modules/**",
+      ".git/**",
+      ".tmp/**",
+      ".worktrees/**",
+      "**/target/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/.venv/**"
+    ]
+  },
+  "permission": {
+    "bash": {
+      "*": "allow",
+      // forge: removed upstream allow-entries for scripts/ci/bk-pipeline-status.sh (Buildkite tooling not installed)
+      "git push --force*": "deny",
+      "git reset --hard*": "deny",
+      "git clean -fd*": "deny",
+      "rm -rf .": "deny",
+      "rm -rf ..": "deny",
+      "rm -rf ~": "deny",
+      "rm -rf /": "deny",
+      "rm -rf /*": "deny"
+    }
+  },
+  // Observability & inference cost:
+  //   - Metric definitions live in `.opencode/rules/metrics.md`.
+  //   - Per-unit telemetry is recorded in the decision-log telemetry block
+  //     (`.opencode/rules/decision-log.md`) and aggregated by
+  //     `.opencode/scripts/aggregate-telemetry.sh`.
+  //   - The per-agent `model`/`temperature` settings below are the primary
+  //     inference-cost lever (spec §9, OP5) — routing a task to the right model
+  //     class is how cost and determinism are controlled.
+  "agent": {
+    "test-runner": {
+      "description": "Runs tests for changed modules and reports results",
+      "model": "minimax/MiniMax-M3",
+      "temperature": 0,
+      "agent": ".opencode/agents/test-runner.md",
+      "tools": {
+        "write": false,
+        "edit": false,
+        "skill": false
+      }
+    },
+    "code-reviewer": {
+      "description": "Pre-commit code reviewer — checks for correctness, security, and conventions",
+      "model": "minimax/MiniMax-M3",
+      "temperature": 0.1,
+      "agent": ".opencode/agents/code-reviewer.md",
+      "tools": {
+        "write": false,
+        "edit": false,
+        "skill": false
+      }
+    },
+    "security-auditor": {
+      "description": "Security-focused code auditor",
+      "model": "zai/glm-5.2",
+      "temperature": 0.1,
+      "agent": ".opencode/agents/security-auditor.md",
+      "tools": {
+        "write": false,
+        "edit": false,
+        "skill": false
+      }
+    },
+    "docs-writer": {
+      "description": "Technical writer for architecture docs, ADRs, and READMEs",
+      "model": "minimax/MiniMax-M3",
+      "temperature": 0.4,
+      "agent": ".opencode/agents/docs-writer.md"
+    },
+    "simplifier": {
+      "description": "Code simplification specialist — reduces code to smallest correct form",
+      "model": "minimax/MiniMax-M3",
+      "temperature": 0.1,
+      "agent": ".opencode/agents/simplifier.md"
+    },
+    "implementer": {
+      "description": "Implementation specialist — writes production code and tests",
+      "model": "zai/glm-5.2",
+      "temperature": 0.2,
+      "agent": ".opencode/agents/implementer.md"
+    },
+    "review-cheap": {
+      "description": "Intermediate deep reviewer on cheaper model — non-authoritative PASS",
+      "model": "minimax/MiniMax-M3",
+      "temperature": 0.1,
+      "agent": ".opencode/agents/review-cheap.md",
+      "tools": {
+        "write": false,
+        "edit": false
+      }
+    },
+    "review-final": {
+      "description": "Authoritative final reviewer — binding PASS/BLOCK verdict",
+      "model": "zai/glm-5.2",
+      "temperature": 0.1,
+      "agent": ".opencode/agents/review-final.md",
+      "tools": {
+        "write": false,
+        "edit": false
+      }
+    },
+    "debugger": {
+      "description": "Production debugger — investigates issues using logs, metrics, and CI data",
+      "model": "zai/glm-5.2",
+      "temperature": 0.2,
+      "agent": ".opencode/agents/debugger.md",
+      "tools": {
+        "write": false,
+        "edit": false,
+        "skill": true
+      }
+    },
+    // forge: removed upstream pipeline-investigator agent (Buildkite-specific ops tooling; not installed)
+    "taskify-agent": {
+      "description": "Task decomposition specialist — breaks specs into structured task graphs",
+      "model": "minimax/MiniMax-M3",
+      "temperature": 0.3,
+      "agent": ".opencode/agents/taskify-agent.md"
+    },
+    "council-seat": {
+      "description": "Read-only design council seat for parallel fan-out debates",
+      "model": "minimax/MiniMax-M3",
+      "temperature": 0.7,
+      "agent": ".opencode/agents/council-seat.md",
+      "tools": {
+        "write": false,
+        "edit": false,
+        "bash": false,
+        "skill": false
+      }
+    }
+  }
+}
