@@ -410,8 +410,9 @@ control-class change (§5.5).
 ## 10. Reference
 
 **Commands** (installed per repo; identical names on all harnesses where present —
-on Codex, `/commit` and `/worktree-merge` ship as custom prompts in `.codex/prompts/`;
-if your Codex version only loads user-scoped prompts, copy them to `~/.codex/prompts/`):
+on Codex, `/commit` and `/worktree-merge` ship as skills in `.agents/skills/`, invoked
+as `$commit` / `$worktree-merge` (Codex deprecated custom prompts in favour of skills;
+list loaded skills with `/skills`)):
 
 | Command | Purpose |
 |---------|---------|

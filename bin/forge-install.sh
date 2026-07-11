@@ -221,7 +221,7 @@ touch "${TARGET}/.tmp/.gitkeep"
 
 # --- leftover-token check (regions are HTML comments and are expected) -------
 
-LEFTOVERS="$(grep -rl '{{FORGE_' "${TARGET}/.opencode" "${TARGET}/.claude" "${TARGET}/.codex" "${TARGET}/AGENTS.md" 2>/dev/null || true)"
+LEFTOVERS="$(grep -rl '{{FORGE_' "${TARGET}/.opencode" "${TARGET}/.claude" "${TARGET}/.codex" "${TARGET}/.agents" "${TARGET}/AGENTS.md" 2>/dev/null || true)"
 [ -z "${LEFTOVERS}" ] || {
     echo "WARNING: unsubstituted {{FORGE_ tokens remain in:" >&2
     echo "${LEFTOVERS}" >&2

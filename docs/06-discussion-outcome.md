@@ -265,7 +265,8 @@ Two items to verify during step 3 of Next steps:
    temperature kept as a provenance comment. Reviewer agents get an *enforced*
    `sandbox_mode = "read-only"`. Deny-list ports to execpolicy `forbidden` rules
    (`.codex/rules/forge.rules`); Stop-hook telemetry to `.codex/hooks.json`; `/commit` +
-   `/worktree-merge` to `.codex/prompts/`. Residual risks recorded in the operating
+   `/worktree-merge` to Codex skills in `.agents/skills/` (Codex deprecated custom
+   prompts in favour of skills). Residual risks recorded in the operating
    manual: Codex hooks/execpolicy are experimental upstream; the `.codex/` layer loads
    only after per-operator repo trust (fail-closed); chained-command splitting for
    execpolicy could not be confirmed on 0.144.1 via `codex execpolicy check` (parity

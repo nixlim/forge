@@ -1,6 +1,10 @@
 ---
-description: Commit changes following the full pre-commit workflow (classify, validate, review)
+name: commit
+description: Run the forge gate-chain commit workflow: classify the change, run category validation, changelog check, and adversarial review before any git commit. Use whenever committing changes in this repo.
 ---
+
+<!-- forge: generated from .claude/commands/commit.md (body verbatim). Keep in sync. -->
+
 Follow the COMPLETE pre-commit workflow defined in `.opencode/rules/commit-workflow.md`. Do NOT skip any steps unless the user explicitly says "skip tests", "skip review", or "just commit".
 
 Validation is mandatory and must be executable where possible. Do not rely only on static inspection.

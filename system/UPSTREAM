@@ -58,7 +58,8 @@
 #     model_reasoning_effort mirrors Claude effort since Codex agent TOML has no
 #     temperature; reviewers enforced read-only via sandbox_mode), rules/forge.rules
 #     (execpolicy port of the harness deny-lists), hooks.json (Stop-hook telemetry),
-#     prompts/{commit,worktree-merge}.md (copies of .claude/commands/*). When syncing
+#     template/.agents/skills/{commit,worktree-merge}/SKILL.md — Codex skills, bodies
+#     from .claude/commands/* (Codex deprecated custom prompts). When syncing
 #     upstream agent/command changes, re-derive the .codex copies to match.
 #   - Default-branch substitution: all files keep upstream's literal `master`; the
 #     installer rewrites branch references when the target repo's default branch differs

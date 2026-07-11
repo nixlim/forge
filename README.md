@@ -51,10 +51,11 @@ The canonical `/forge-init` command is versioned at `commands/forge-init.md`; in
 to user scope on each machine so it works in any repo:
 
 - Claude Code: `cp commands/forge-init.md ~/.claude/commands/forge-init.md`
-- Codex: `cp commands/forge-init.md ~/.codex/prompts/forge-init.md`
+- Codex: `cp -R skills/forge-init ~/.agents/skills/` — Codex deprecated custom
+  prompts in favour of skills; invoke as `$forge-init` (list with `/skills`).
 
-(Codex only lists user-scoped custom prompts it has loaded at startup — restart the
-session after copying.)
+(Both load at session startup — restart the session after copying. The skill body is
+generated from `commands/forge-init.md`; keep the two in sync.)
 
 ## Model routing (decision, 2026-07-09)
 
@@ -68,8 +69,10 @@ Per-agent temperatures (opencode) and reasoning efforts (Claude) are kept verbat
 upstream. Codex is a first-class third harness (forge-original, no upstream counterpart):
 per-agent model/effort in `.codex/agents/*.toml`, kill-switch deny-list as execpolicy
 rules in `.codex/rules/forge.rules`, Stop-hook telemetry in `.codex/hooks.json`, and
-`/commit` + `/worktree-merge` as prompts in `.codex/prompts/`. Codex loads a repo's
-`.codex/` layer only after the operator trusts the repo (fail-closed until then).
+`/commit` + `/worktree-merge` as skills in `.agents/skills/` (invoke as `$commit` /
+`$worktree-merge`, or Codex picks them implicitly from their descriptions). Codex loads
+a repo's `.codex/` layer only after the operator trusts the repo (fail-closed until
+then); skills in `.agents/skills/` are outside that trust gate.
 Changing routing after install is a control-class change inside the installed
 system (evals + `review-final` + human approval).
 

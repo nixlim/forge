@@ -1,6 +1,10 @@
 ---
-description: Install and initialize the forge agent operating system (DVRR — worktrees, gate chain, adversarial review, evals) in the current repo
+name: forge-init
+description: Install and initialize the forge agent operating system (DVRR worktrees, gate chain, adversarial review, evals) in the current repo. Use when asked to run forge-init, install forge, or initialize the forge system.
 ---
+
+<!-- forge: generated from commands/forge-init.md (body verbatim). Keep in sync. -->
+
 Install the forge agent operating system into the current repository and fill in its
 per-project layer. The system is vendored at
 `/Users/nixlim/Sync/PROJECTS/foundry_zero/forge/system/` (see its `UPSTREAM` file for

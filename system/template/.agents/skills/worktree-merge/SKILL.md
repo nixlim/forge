@@ -1,6 +1,10 @@
 ---
-description: Merge the current worktree's work back to master through the 4-gate verification chain and locked rebase
+name: worktree-merge
+description: Merge the current forge worktree back to the default branch through the 4-gate verification chain (tests, lint, adversarial review, summary) and a locked rebase. Use when finishing a worktree session or asked to merge work back.
 ---
+
+<!-- forge: generated from .claude/commands/worktree-merge.md (body verbatim). Keep in sync. -->
+
 Follow the worktree merge workflow in `.opencode/rules/worktree-workflow.md` (steps 3–8). Do not skip any gate unless the user explicitly says "skip gate X".
 
 Run all four gates in order. **Any failure stops the merge** and leaves the worktree intact for inspection — never delete a worktree on a failed merge.
