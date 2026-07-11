@@ -249,7 +249,7 @@ Follow `.opencode/rules/subagent-routing.md` for both slash-command and conversa
 | Claude Code | `fable` | `opus` |
 | Codex | `gpt-5` | `gpt-4o` / `gpt-4o-mini` (upstream tiers kept) |
 
-Strong tier: implementer, review-final, security-auditor, debugger. Weak tier: everything else. Per-agent temperatures live in `opencode.jsonc`; per-agent reasoning effort lives in `.claude/agents/` frontmatter. Changing this routing is a control-class change ([[control-integrity]]): evaluation harness + `review-final` + explicit human approval.
+Strong tier: implementer, review-final, security-auditor, debugger. Weak tier: everything else. Per-agent temperatures live in `opencode.jsonc`; per-agent reasoning effort lives in `.claude/agents/` frontmatter; on Codex, per-agent model + reasoning effort live in `.codex/agents/*.toml` (registered in `.codex/config.toml` — Codex exposes no per-agent temperature, so effort mirrors the Claude Code values, and reviewer agents run under an enforced read-only sandbox). Changing this routing is a control-class change ([[control-integrity]]): evaluation harness + `review-final` + explicit human approval.
 
 ## Research-First Problem Solving
 

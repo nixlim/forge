@@ -74,7 +74,7 @@ Fill every `<!-- FORGE:REGION ... -->` block **from the Phase 1.5 findings** —
 filled region should be traceable to something the exploration found. Find them all
 first:
 ```bash
-grep -rn "FORGE:REGION" --include="*.md" --include="*.jsonc" .opencode .claude AGENTS.md opencode.jsonc 2>/dev/null | grep BEGIN
+grep -rn "FORGE:REGION" --include="*.md" --include="*.jsonc" --include="*.toml" .opencode .claude .codex AGENTS.md opencode.jsonc 2>/dev/null | grep BEGIN
 ```
 
 For each region, replace the default content BETWEEN the BEGIN/END markers. Two
@@ -97,11 +97,12 @@ no-ops for completed work:
    assemble from `/Users/nixlim/Sync/PROJECTS/foundry_zero/forge/system/seeds/validation-snippets/stacks.md`,
    adapted to the repo's actual commands. Keep the upstream shape: numbered steps,
    executable verification preferred, "fix before committing".
-3. `gate1-test-command` (in `.opencode/rules/worktree-workflow.md` and
-   `.claude/commands/worktree-merge.md`): the targeted test command plus one
-   **always-run blast-radius suite** (the module the rest depends on most). **Ask the
-   user to confirm the blast-radius choice** (AskUserQuestion, recommended option
-   first). Both files must carry the same command.
+3. `gate1-test-command` (in `.opencode/rules/worktree-workflow.md`,
+   `.claude/commands/worktree-merge.md`, and `.codex/prompts/worktree-merge.md`): the
+   targeted test command plus one **always-run blast-radius suite** (the module the
+   rest depends on most). **Ask the user to confirm the blast-radius choice**
+   (AskUserQuestion, recommended option first). All three files must carry the same
+   command.
 4. `test-commands` (in `.opencode/rules/testing-policy.md`): document the test layout,
    runners, and the confirmed blast-radius suite.
 5. `project-triggers` + `completeness-project-items` (in
@@ -115,9 +116,12 @@ no-ops for completed work:
 7. `changelog-policy` (in `.opencode/rules/commit-workflow.md`): if the repo keeps a
    changelog, write the upstream-style rule (unreleased section, user-facing test,
    entry format); otherwise keep the explicit "no changelog gate" default.
-8. `agent-project-context` (in `.claude/agents/*.md` and `.opencode/agents/*.md`):
+8. `agent-project-context` (in `.claude/agents/*.md`, `.opencode/agents/*.md`, and
+   `.codex/agents/*.toml` — in the TOMLs the region sits inside the
+   `developer_instructions` string; edit between the markers, keep valid TOML):
    per agent, list this repo's key docs, conventions, module layout, and test commands
-   relevant to that agent's role. Keep it short (3–8 lines each).
+   relevant to that agent's role. Keep it short (3–8 lines each). Fill all three
+   harness copies of each agent identically.
 9. `skill-project-context` (in `.opencode/skills/*/SKILL.md`): same, per skill.
 10. `project-overview`, `project-docs`, `project-policies` (in `AGENTS.md`): write the
     project overview (stack, CI, infra, repo host), the "Document | When to consult"
@@ -126,6 +130,13 @@ no-ops for completed work:
 11. `opencode.jsonc`: verify the model IDs against this machine
     (`opencode models` if opencode is installed; otherwise leave the VERIFY comment in
     place and tell the user).
+12. Codex (if the `codex` CLI is installed): validate the payload —
+    `python3 -c 'import tomllib,glob; [tomllib.load(open(p,"rb")) for p in glob.glob(".codex/**/*.toml", recursive=True)]'`
+    then `codex execpolicy check --rules .codex/rules/forge.rules -- git push --force`
+    (expect `forbidden`). Tell the user to open Codex in the repo once and TRUST it —
+    the `.codex/` layer (config, agents, rules, hooks) is skipped until trusted, and
+    that if their Codex build does not load project-scoped prompts they should copy
+    `.codex/prompts/*.md` to `~/.codex/prompts/`.
 
 Before leaving Phase 2, verify the customization against reality (protocol §6): run
 the assembled validation and Gate-1 commands once on the clean tree — they must pass

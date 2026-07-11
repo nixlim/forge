@@ -1,0 +1,45 @@
+# forge kill-switch deny-list (Codex execpolicy).
+#
+# Port of the deny entries in `.claude/settings.json` (permissions.deny) and
+# `opencode.jsonc` (permission.bash) — the three harnesses must stay in lockstep.
+# decision = "forbidden" blocks the command outright, no prompt. Codex splits simple
+# `&&`/`||`/`;`/`|` chains and applies the most restrictive matching rule, so an
+# allowed `git add` cannot smuggle a chained forbidden command.
+#
+# Changing this file is a control-class change: evaluation harness + review-final +
+# explicit human approval. Loaded only once the repo's .codex/ layer is trusted.
+#
+# Validate after editing:
+#   codex execpolicy check --pretty --rules .codex/rules/forge.rules -- git push --force
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "--force-with-lease"]],
+    decision = "forbidden",
+    justification = "forge kill-switch: force pushes are deny-listed (shared-history rewrite; linear-history invariant).",
+    match = ["git push --force origin HEAD"],
+    not_match = ["git push origin HEAD"],
+)
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "forge kill-switch: destructive working-tree reset is deny-listed.",
+    match = ["git reset --hard HEAD~1"],
+    not_match = ["git reset HEAD~1"],
+)
+
+prefix_rule(
+    pattern = ["git", "clean", "-fd"],
+    decision = "forbidden",
+    justification = "forge kill-switch: bulk deletion of untracked files is deny-listed.",
+    match = ["git clean -fd"],
+    not_match = ["git clean -n"],
+)
+
+prefix_rule(
+    pattern = ["rm", "-rf", [".", "..", "~", "/", "/*"]],
+    decision = "forbidden",
+    justification = "forge kill-switch: recursive deletion of repo root, home, or filesystem root is deny-listed.",
+    match = ["rm -rf ."],
+    not_match = ["rm -rf .tmp/decisions"],
+)

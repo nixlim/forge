@@ -7,6 +7,10 @@ as source material to *generate* the per-project layer:
   concretizes each one against the target repo (real language, a real planted bug in a
   realistic diff for that codebase), then establishes the baseline by running the named
   agent and recording `tasks/<id>.result`.
+- `brownfield-exploration.md` — the exploration protocol forge-init runs (Phase 1.5)
+  on repos with existing code/CI/conventions before filling any region: CI mining,
+  convention mining, history mining, docs indexing, existing-agent-tooling merge, and
+  self-verification of the assembled gates.
 - `validation-snippets/` — per-stack file-category rows and validation commands for the
   `FORGE:REGION file-categories` and `FORGE:REGION stack-validations` regions in
   `.opencode/rules/commit-workflow.md`. forge-init detects the stack(s) from the repo

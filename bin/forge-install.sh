@@ -101,7 +101,7 @@ install_file() {
     mkdir -p "$(dirname "${dest}")"
 
     case "${rel}" in
-        AGENTS.md|CLAUDE.md|opencode.jsonc|.claude/settings.json)
+        AGENTS.md|CLAUDE.md|opencode.jsonc|.claude/settings.json|.codex/config.toml|.codex/hooks.json)
             if [ -f "${dest}" ] && ! was_previously_installed "${rel}" && ! cmp -s "${src}" "${dest}"; then
                 cp "${src}" "${dest}.forge-new"
                 substitute_tokens "${dest}.forge-new"
@@ -160,6 +160,7 @@ substitute_tokens() {
     logical="${logical%.forge-new}"
     case "${logical}" in
         *.md|*.json|*.jsonc|*.txt|*.ts)  : ;;   # text files that may carry tokens
+        *.toml)                          : ;;   # .codex/config.toml + agent TOMLs carry tokens
         *.sh)                            : ;;   # scripts carry no tokens but keep branch refs literal? (no — scripts are branch-agnostic)
         *) return 0 ;;
     esac
@@ -220,7 +221,7 @@ touch "${TARGET}/.tmp/.gitkeep"
 
 # --- leftover-token check (regions are HTML comments and are expected) -------
 
-LEFTOVERS="$(grep -rl '{{FORGE_' "${TARGET}/.opencode" "${TARGET}/.claude" "${TARGET}/AGENTS.md" 2>/dev/null || true)"
+LEFTOVERS="$(grep -rl '{{FORGE_' "${TARGET}/.opencode" "${TARGET}/.claude" "${TARGET}/.codex" "${TARGET}/AGENTS.md" 2>/dev/null || true)"
 [ -z "${LEFTOVERS}" ] || {
     echo "WARNING: unsubstituted {{FORGE_ tokens remain in:" >&2
     echo "${LEFTOVERS}" >&2
@@ -246,7 +247,7 @@ fi
     echo "project_name: ${PROJECT_NAME}"
     echo "default_branch: ${BRANCH}"
     if [ "${BRANCH}" != "master" ]; then
-        echo "deviation: branch references rewritten master -> ${BRANCH} in installed .md/.json/.jsonc files"
+        echo "deviation: branch references rewritten master -> ${BRANCH} in installed .md/.json/.jsonc/.toml files"
     fi
     echo "init_completed: ${PREV_INIT}"
     [ -z "${PREV_REGIONS}" ] || printf '%s\n' "${PREV_REGIONS}"
@@ -263,4 +264,8 @@ echo "  2. Run /forge-init in this repo — it fills the FORGE:REGION blocks (st
 echo "     validations, Gate-1 test command, project review triggers, AGENTS.md"
 echo "     project sections) and establishes eval baselines. Until then the merge"
 echo "     and commit gates FAIL CLOSED by design."
-echo "  3. Commit the installed system (it is a control-class change: gated approval)."
+echo "  3. Codex users: open Codex once in this repo and TRUST it when prompted —"
+echo "     until trusted, Codex skips the entire .codex/ layer (config, agents,"
+echo "     rules, hooks) by design. Verify the kill-switch afterwards with:"
+echo "       codex execpolicy check --rules .codex/rules/forge.rules -- git push --force"
+echo "  4. Commit the installed system (it is a control-class change: gated approval)."

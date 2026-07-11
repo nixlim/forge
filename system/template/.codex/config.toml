@@ -1,0 +1,64 @@
+# {{FORGE_PROJECT_NAME}} Codex configuration (forge)
+#
+# Third-harness config: same DVRR roles as opencode.jsonc / .claude/agents, Codex-native
+# mechanisms. Model routing (docs/06-discussion-outcome.md): strong=gpt-5 (implementer,
+# review-final, security-auditor, debugger), weak=gpt-4o / gpt-4o-mini (upstream OpenAI
+# tiers kept). Kill-switch deny-list lives in .codex/rules/forge.rules (execpolicy);
+# Stop-hook telemetry in .codex/hooks.json. Changing routing, rules, or hooks is a
+# control-class change: evals + review-final + explicit human approval.
+#
+# NOTE: this project layer loads only after the operator trusts the repo in Codex
+# (first-run prompt). Until trusted, Codex skips .codex/ entirely — fail closed.
+
+# Root session: parity with the other harnesses (allow-all + deny-list): commands run
+# in the workspace-write sandbox; escalation prompts only when the sandbox blocks.
+approval_policy = "on-failure"
+sandbox_mode = "workspace-write"
+
+[agents]
+max_threads = 6
+max_depth = 1
+
+[agents."code-reviewer"]
+description = "Pre-commit code reviewer — checks for correctness, security, and conventions"
+config_file = "./agents/code-reviewer.toml"
+
+[agents."council-seat"]
+description = "Read-only design council seat for parallel fan-out debates"
+config_file = "./agents/council-seat.toml"
+
+[agents."debugger"]
+description = "Production debugger — investigates issues using logs, metrics, and CI data"
+config_file = "./agents/debugger.toml"
+
+[agents."docs-writer"]
+description = "Technical writer for architecture docs, ADRs, and READMEs"
+config_file = "./agents/docs-writer.toml"
+
+[agents."implementer"]
+description = "Implementation specialist — writes production code and tests"
+config_file = "./agents/implementer.toml"
+
+[agents."review-cheap"]
+description = "Intermediate deep reviewer on cheaper model — non-authoritative PASS"
+config_file = "./agents/review-cheap.toml"
+
+[agents."review-final"]
+description = "Authoritative final reviewer — binding PASS/BLOCK verdict"
+config_file = "./agents/review-final.toml"
+
+[agents."security-auditor"]
+description = "Security-focused code auditor"
+config_file = "./agents/security-auditor.toml"
+
+[agents."simplifier"]
+description = "Code simplification specialist — reduces code to smallest correct form"
+config_file = "./agents/simplifier.toml"
+
+[agents."taskify-agent"]
+description = "Task decomposition specialist — breaks specs into structured task graphs"
+config_file = "./agents/taskify-agent.toml"
+
+[agents."test-runner"]
+description = "Runs tests for changed modules and reports results"
+config_file = "./agents/test-runner.toml"

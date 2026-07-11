@@ -185,6 +185,27 @@ fallback. Additionally `subagent-routing.md` moved from engine to template (its
 conversational routing table is inherently per-project), and the installer defends
 against local memory-plugin `CLAUDE.md`/`.devlog` droppings contaminating the payload.
 
+Post-implementation hardening (2026-07-09, after the initial import):
+
+- **Constitution integrity fix**: the templated review skills cited seven principle
+  IDs deleted as "MockServer-specific" (AMB-08, CON-07/08, SEC-11, OPS-09/10,
+  COR-08). Re-added as genericized rows with stable IDs; two genuinely
+  project-specific citations fixed at the call site. A payload-wide cross-reference
+  check now passes (details in `system/UPSTREAM`).
+- **Idempotent re-init**: the installer performs a region-preserving refresh —
+  filled `FORGE:REGION` blocks (identified by the removal of their `forge-init:`
+  instruction comment) survive re-installs verbatim; unfilled ones refresh from the
+  template; manifest state, eval fixtures, and baselines are preserved. Verified by
+  an 11-point test battery including a byte-identical third run.
+- **Brownfield exploration (Phase 1.5)**: `/forge-init` now explores existing repos
+  before filling regions — CI mining (local gates run what CI runs), convention and
+  history mining, docs indexing, existing-agent-tooling merge, and self-verification
+  of assembled gates against the clean tree. Protocol:
+  `system/seeds/brownfield-exploration.md`.
+- The forge repo is published at `github.com:nixlim/forge` (initial import
+  `b29fcc3`; brownfield phase `fc60f0f`), with the canonical `/forge-init` versioned
+  at `commands/forge-init.md`.
+
 ## Default model routing (resolved 2026-07-09)
 
 Decision: a two-tier **strong / weak** mapping per harness. Upstream's three OpenAI
@@ -235,3 +256,18 @@ Two items to verify during step 3 of Next steps:
    "Keep what they have" is recorded as the intent (the gpt-5 family tiers); the
    mechanism (whether routing is per-subagent or a documented tier the session requests)
    gets settled when the Codex config file is authored.
+
+   **RESOLVED 2026-07-11** — Codex CLI (verified on 0.144.1) now supports project-scoped
+   subagent definitions, so routing is **per-subagent**: `system/template/.codex/agents/*.toml`
+   (generated from `.claude/agents/*.md`, bodies verbatim) registered in
+   `.codex/config.toml`. Codex agent TOML has no temperature key; `model_reasoning_effort`
+   mirrors the Claude Code effort values (same tier-recovery mechanism), with the upstream
+   temperature kept as a provenance comment. Reviewer agents get an *enforced*
+   `sandbox_mode = "read-only"`. Deny-list ports to execpolicy `forbidden` rules
+   (`.codex/rules/forge.rules`); Stop-hook telemetry to `.codex/hooks.json`; `/commit` +
+   `/worktree-merge` to `.codex/prompts/`. Residual risks recorded in the operating
+   manual: Codex hooks/execpolicy are experimental upstream; the `.codex/` layer loads
+   only after per-operator repo trust (fail-closed); chained-command splitting for
+   execpolicy could not be confirmed on 0.144.1 via `codex execpolicy check` (parity
+   caveat: the other harnesses' pattern deny-lists share the same literal-prefix
+   character).

@@ -52,6 +52,14 @@
 #   - Model routing per forge/docs/06-discussion-outcome.md: opencode → GLM 5.2 (strong)
 #     / M3 (weak); Claude Code → fable (strong) / opus (weak), upstream effort values
 #     kept; Codex keeps upstream's OpenAI tiers.
+#   - template/.codex/ is FORGE-ORIGINAL (no upstream counterpart): upstream targets
+#     opencode + Claude Code only. It makes Codex a first-class third harness:
+#     config.toml + agents/*.toml (generated from .claude/agents/*.md, bodies verbatim;
+#     model_reasoning_effort mirrors Claude effort since Codex agent TOML has no
+#     temperature; reviewers enforced read-only via sandbox_mode), rules/forge.rules
+#     (execpolicy port of the harness deny-lists), hooks.json (Stop-hook telemetry),
+#     prompts/{commit,worktree-merge}.md (copies of .claude/commands/*). When syncing
+#     upstream agent/command changes, re-derive the .codex copies to match.
 #   - Default-branch substitution: all files keep upstream's literal `master`; the
 #     installer rewrites branch references when the target repo's default branch differs
 #     (recorded in the install manifest).

@@ -97,8 +97,17 @@ Notes:
   `FORGE:REGION` still holds its fail-closed default (Gate 1 exits 1; stack
   validations refuse to pass). This is deliberate — an uninitialized system cannot
   fake a green gate.
-- Existing `AGENTS.md` / `CLAUDE.md` / `opencode.jsonc` / `.claude/settings.json` are
-  never overwritten: the fresh copy lands as `<file>.forge-new` for manual merge.
+- Existing `AGENTS.md` / `CLAUDE.md` / `opencode.jsonc` / `.claude/settings.json` /
+  `.codex/config.toml` / `.codex/hooks.json` are never overwritten: the fresh copy
+  lands as `<file>.forge-new` for manual merge.
+- **Codex trust bootstrap.** Codex loads a repo's `.codex/` layer (config, agents,
+  execpolicy rules, hooks) only after the operator trusts the repo at the first-run
+  prompt — until then the whole layer is skipped, i.e. the Codex harness fails closed.
+  After trusting, verify the kill-switch:
+  `codex execpolicy check --rules .codex/rules/forge.rules -- git push --force`
+  (expect `"decision": "forbidden"`). Codex hooks and execpolicy are experimental
+  upstream — pin the Codex CLI version and treat a version bump like a model bump
+  (behavioural change → evals).
 - **Re-running is idempotent.** The installer refreshes forge-managed files but
   carries forward every *filled* `FORGE:REGION` (a region counts as filled once its
   `forge-init:` instruction comment has been removed — `/forge-init` removes it when
@@ -106,7 +115,7 @@ Notes:
   Manifest state (`init_completed`, `region:` records), existing eval fixtures and
   `.result` baselines, and the `.gitignore` block are all preserved — a re-run on a
   fully initialized repo is a no-op. `grep -rn "forge-init:" .opencode .claude
-  AGENTS.md` lists what is still unfilled.
+  .codex AGENTS.md` lists what is still unfilled.
 - `flock` is absent on stock macOS: the merge falls back to the rule's `mkdir` mutex;
   `brew install flock` enables the primary path.
 
@@ -341,7 +350,9 @@ still catches. Model *version* changes count as behavioural changes — re-run e
 Routing: low risk + strong verification → autonomous. Control changes, releases,
 production infra, secrets, data deletion → at least gated-approval. Destructive git
 (`reset --hard`, `push --force`, history rewrites, `clean -fd`) always requires
-explicit confirmation and is deny-listed in both harness configs. Autonomy is earned
+explicit confirmation and is deny-listed in all three harness configs (`.claude/settings.json`
+and `opencode.jsonc` pattern denies; Codex via execpolicy `forbidden` rules in
+`.codex/rules/forge.rules` — verify with `codex execpolicy check`). Autonomy is earned
 by track record and demoted on failure.
 
 **Operator halt (kill-switch).** `touch AGENT_HALT` at the main checkout root halts
@@ -368,6 +379,9 @@ a control.
 Per-agent **temperatures** (opencode) and **reasoning efforts** (Claude Code) carry
 upstream's values: validation/review agents run cold (t=0–0.1 / effort per role),
 implementation slightly warmer (0.2), ideation/design seats hot (`council-seat` 0.7).
+Codex agent TOML exposes no temperature; `.codex/agents/*.toml` mirror the Claude Code
+per-agent efforts instead and record the upstream temperature as a provenance comment.
+Codex reviewers additionally run under an *enforced* `sandbox_mode = "read-only"`.
 Delegation *is* routing: the orchestrator does little directly because a subagent is
 where the right model/temperature/effort get selected. Changing this table is a
 control-class change (§5.5).
@@ -395,7 +409,9 @@ control-class change (§5.5).
 
 ## 10. Reference
 
-**Commands** (installed per repo; identical names on both harnesses where present):
+**Commands** (installed per repo; identical names on all harnesses where present —
+on Codex, `/commit` and `/worktree-merge` ship as custom prompts in `.codex/prompts/`;
+if your Codex version only loads user-scoped prompts, copy them to `~/.codex/prompts/`):
 
 | Command | Purpose |
 |---------|---------|

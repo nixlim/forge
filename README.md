@@ -41,7 +41,7 @@ human approval; never auto-committed).
 |------|------|
 | `system/engine/` | Tier-1 payload — byte-close to upstream for diffable syncs |
 | `system/template/` | Tier-2 payload — upstream files with `{{FORGE_*}}` tokens and `<!-- FORGE:REGION ... -->` blocks that `/forge-init` fills (defaults fail closed) |
-| `system/seeds/` | Tier-3 source material — eval-task templates, per-stack validation snippets |
+| `system/seeds/` | Tier-3 source material — eval-task templates, per-stack validation snippets, brownfield exploration protocol |
 | `system/UPSTREAM` | provenance manifest: upstream commit, deviations, sync procedure |
 | `system/LICENSE-upstream` | Apache-2.0 license of the upstream repo |
 | `bin/forge-install.sh` | mechanical installer (idempotent) |
@@ -49,7 +49,12 @@ human approval; never auto-committed).
 
 The canonical `/forge-init` command is versioned at `commands/forge-init.md`; install it
 to user scope on each machine so it works in any repo:
-`cp commands/forge-init.md ~/.claude/commands/forge-init.md`.
+
+- Claude Code: `cp commands/forge-init.md ~/.claude/commands/forge-init.md`
+- Codex: `cp commands/forge-init.md ~/.codex/prompts/forge-init.md`
+
+(Codex only lists user-scoped custom prompts it has loaded at startup — restart the
+session after copying.)
 
 ## Model routing (decision, 2026-07-09)
 
@@ -60,7 +65,12 @@ to user scope on each machine so it works in any repo:
 | Codex | `gpt-5` | `gpt-4o` / `gpt-4o-mini` (upstream kept) |
 
 Per-agent temperatures (opencode) and reasoning efforts (Claude) are kept verbatim from
-upstream. Changing routing after install is a control-class change inside the installed
+upstream. Codex is a first-class third harness (forge-original, no upstream counterpart):
+per-agent model/effort in `.codex/agents/*.toml`, kill-switch deny-list as execpolicy
+rules in `.codex/rules/forge.rules`, Stop-hook telemetry in `.codex/hooks.json`, and
+`/commit` + `/worktree-merge` as prompts in `.codex/prompts/`. Codex loads a repo's
+`.codex/` layer only after the operator trusts the repo (fail-closed until then).
+Changing routing after install is a control-class change inside the installed
 system (evals + `review-final` + human approval).
 
 ## Syncing with upstream
