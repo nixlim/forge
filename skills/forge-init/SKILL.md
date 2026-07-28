@@ -7,8 +7,8 @@ description: Install and initialize the forge agent operating system (DVRR workt
 
 Install the forge agent operating system into the current repository and fill in its
 per-project layer. The system is vendored at
-`/Users/nixlim/Sync/PROJECTS/foundry_zero/forge/system/` (see its `UPSTREAM` file for
-provenance) with installer `/Users/nixlim/Sync/PROJECTS/foundry_zero/forge/bin/forge-install.sh`.
+`{{FORGE_ROOT}}/system/` (see its `UPSTREAM` file for
+provenance) with installer `{{FORGE_ROOT}}/bin/forge-install.sh`.
 
 Follow these phases in order. **Fail closed**: if a phase cannot complete, stop, say
 what is missing, and leave the FORGE:REGION defaults in place (they fail closed by
@@ -36,7 +36,7 @@ design) rather than guessing.
 
 Run:
 ```bash
-/Users/nixlim/Sync/PROJECTS/foundry_zero/forge/bin/forge-install.sh \
+{{FORGE_ROOT}}/bin/forge-install.sh \
     --project-name "<name>" --branch "<branch>"
 ```
 Review its output. If it reports preserved files (`*.forge-new`), tell the user those
@@ -47,7 +47,7 @@ the expected tree appeared (`.opencode/`, `.claude/`, `AGENTS.md`, `CLAUDE.md`,
 ## Phase 1.5 — Explore the existing repo (brownfield)
 
 If the repo has existing code, CI, or conventions, run the exploration protocol in
-`/Users/nixlim/Sync/PROJECTS/foundry_zero/forge/system/seeds/brownfield-exploration.md`
+`{{FORGE_ROOT}}/system/seeds/brownfield-exploration.md`
 BEFORE filling any region. **Principle: mirror the repo's existing reality — never
 invent a parallel one.** In brief:
 
@@ -98,7 +98,7 @@ no-ops for completed work:
    `Dockerfile*`, `Chart.yaml`). Read the repo's own scripts (package.json scripts,
    Makefile, justfile) — prefer them over generic commands.
 2. `file-categories` + `stack-validations` (in `.opencode/rules/commit-workflow.md`):
-   assemble from `/Users/nixlim/Sync/PROJECTS/foundry_zero/forge/system/seeds/validation-snippets/stacks.md`,
+   assemble from `{{FORGE_ROOT}}/system/seeds/validation-snippets/stacks.md`,
    adapted to the repo's actual commands. Keep the upstream shape: numbered steps,
    executable verification preferred, "fix before committing".
 3. `gate1-test-command` (in `.opencode/rules/worktree-workflow.md`,
@@ -151,7 +151,7 @@ blast-radius if it is too slow for a per-merge gate.
 ## Phase 3 — Eval baselines
 
 1. Create `.opencode/evals/tasks/` fixtures from the three templates in
-   `/Users/nixlim/Sync/PROJECTS/foundry_zero/forge/system/seeds/eval-tasks/`:
+   `{{FORGE_ROOT}}/system/seeds/eval-tasks/`:
    concretize each against THIS repo (real language, realistic diff, a bug class from
    this repo's history where possible). Keep the frontmatter format. **Idempotency:
    never overwrite an existing fixture or `.result` baseline** — on re-init, only

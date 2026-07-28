@@ -24,7 +24,7 @@ From the target repository root:
 or mechanically only (leaves gates fail-closed until init):
 
 ```bash
-/Users/nixlim/Sync/PROJECTS/foundry_zero/forge/bin/forge-install.sh \
+{{FORGE_ROOT}}/bin/forge-install.sh \
     [--project-name NAME] [--branch BRANCH] [--target DIR]
 ```
 
