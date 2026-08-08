@@ -24,9 +24,12 @@ From the target repository root:
 or mechanically only (leaves gates fail-closed until init):
 
 ```bash
-{{FORGE_ROOT}}/bin/forge-install.sh \
+<forge-checkout>/bin/forge-install.sh \
     [--project-name NAME] [--branch BRANCH] [--target DIR]
 ```
+
+(`<forge-checkout>` = wherever this repo is cloned; the installer resolves its own
+payload location.)
 
 `/forge-init` = `forge-install.sh` (copy + token/branch substitution + `.gitignore` +
 manifest) **plus** the judgment layer: stack detection → validation tables, Gate-1 test
@@ -48,13 +51,18 @@ human approval; never auto-committed).
 | `docs/` | research bundle + decision records |
 
 The canonical `/forge-init` command is versioned at `commands/forge-init.md`; install it
-to user scope on each machine so it works in any repo:
+to user scope on each machine so it works in any repo. The files reference the forge
+checkout via a `{{FORGE_ROOT}}` token — substitute your checkout path at copy time
+(run from this repo's root):
 
-- Claude Code: `cp commands/forge-init.md ~/.claude/commands/forge-init.md`
-- Codex: `cp -R skills/forge-init ~/.agents/skills/` — Codex deprecated custom
-  prompts in favour of skills; invoke as `$forge-init` (list with `/skills`).
+- Claude Code:
+  `sed "s|{{FORGE_ROOT}}|$PWD|g" commands/forge-init.md > ~/.claude/commands/forge-init.md`
+- Codex **and Kimi Code**: `cp -R skills/forge-init ~/.agents/skills/ &&
+  sed -i '' "s|{{FORGE_ROOT}}|$PWD|g" ~/.agents/skills/forge-init/SKILL.md` — both read
+  the cross-tool `~/.agents/skills/` directory; invoke as `$forge-init` in Codex or
+  `/skill:forge-init` (shorthand `/forge-init`) in Kimi (list with `/skills`).
 
-(Both load at session startup — restart the session after copying. The skill body is
+(All load at session startup — restart the session after copying. The skill body is
 generated from `commands/forge-init.md`; keep the two in sync.)
 
 ## Model routing (decision, 2026-07-09)
