@@ -272,3 +272,65 @@ Two items to verify during step 3 of Next steps:
    execpolicy could not be confirmed on 0.144.1 via `codex execpolicy check` (parity
    caveat: the other harnesses' pattern deny-lists share the same literal-prefix
    character).
+
+## Kimi Code CLI + ZCode harnesses (resolved 2026-07-18)
+
+Decision: **Kimi Code CLI becomes the fourth first-class harness; ZCode (Z.ai) is a
+companion harness at the advisory tier.** Mechanism mapping, verified against the
+official docs of both products (kimi.com/code/docs, zcode.z.ai/docs):
+
+**Kimi Code CLI (Moonshot).**
+
+- **Roles → skills, not agents.** Kimi has no custom sub-agent registry — the only
+  sub-agents are the built-ins `coder` (full tools), `explore` (read-only), and
+  `plan` (no shell), and `[subagent]` config exposes only a timeout. The 11 DVRR
+  roles therefore ship as project skills in `.kimi-code/skills/<role>/SKILL.md`
+  (generated from `.claude/agents/*.md`, bodies verbatim — same derivation rule as
+  the Codex TOMLs). Frontmatter `name` + `description` are both mandatory (Kimi's
+  parser refuses the skill otherwise). To get an isolated context, dispatch a
+  sub-agent that applies the skill; **reviewer roles run on `explore`** — that is
+  the only tool-enforced read-only available (a skill prompt cannot enforce it).
+- **Routing collapses.** Kimi is a single-model-family harness (`k3`); skills carry
+  no per-skill model/temperature/effort. The strong/weak split has no mechanism —
+  the cheap/authoritative *separation of duties* survives as distinct skills +
+  `explore`, but its economics do not. Recorded in the manual: prefer cross-harness
+  `review-final` for control-class changes.
+- **Kill-switch has no project-level home.** Kimi reads a single user-level
+  `~/.kimi-code/config.toml`; there is no project config file, and permission rules
+  and hooks are global-only. The deny-list (`[[permission.rules]]` with
+  `Bash(git push --force*)`-style patterns) + Stop-hook telemetry ship as
+  `.kimi-code/config-snippet.toml` with a one-time manual merge into the global
+  config. Until merged the Kimi harness is **fail-open** — the inverse of Codex's
+  trust gate, called out in the manual and the installer's next-steps. The global
+  merge is acceptable because every deny-listed command is universally destructive.
+- **Hooks fail open** (non-2 exit, timeout, crash ⇒ allow), so permission rules are
+  the primary kill-switch and hooks carry only notification + telemetry. Hooks run
+  in the session's project directory, so the repo-relative telemetry command no-ops
+  outside forge repos.
+- **`.agents/skills/` is shared.** Kimi reads the same cross-tool `~/.agents/skills/`
+  and repo `.agents/skills/` directories as Codex, so `$commit`/`$worktree-merge`
+  and the user-scope `forge-init` skill serve both harnesses from one copy
+  (`/skill:<name>` or `/<name>` shorthand on Kimi).
+- `.kimi-code/local.toml` (machine-local workspace settings) added to the installed
+  `.gitignore` block, per Kimi's own docs.
+
+**ZCode (Z.ai desktop ADE).**
+
+- Desktop-only (no CLI/headless), GLM-5.2 fixed. It reads the repo's `AGENTS.md`
+  natively (plus `~/.zcode/AGENTS.md`; CLAUDE.md is only migrated once at
+  onboarding, not read) — so the forge instruction layer works with zero install.
+- Everything else is user-level only: subagents (`~/.zcode/agents/`, Beta, no
+  documented file format, no project scope), skills (`~/.zcode/skills/`), commands
+  (`~/.zcode/commands/`). No permission/deny-list mechanism, no enforced read-only
+  subagents, no hooks. Nothing for the installer to place beyond what `AGENTS.md`
+  already provides.
+- Decision: **advisory tier** — usable for exploration/design/implementation
+  against the AGENTS.md contract; gate-chain commits happen from a CLI harness.
+  Skills can be imported from `.agents/skills/` via Settings → Skills → Import
+  (Symlink mode tracks the repo). Revisit if ZCode ships project-level agents (its
+  docs mark this "not available yet").
+
+Residual risks recorded: Kimi custom-agent support may land later (revisit the
+skills mapping); the global-config merge is manual and unverifiable by the
+installer (mitigated by `/forge-init` step 13 and a troubleshooting row); Kimi
+hook fail-open semantics are upstream behaviour, not configurable.

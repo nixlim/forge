@@ -1,7 +1,8 @@
 # forge kill-switch deny-list (Codex execpolicy).
 #
 # Port of the deny entries in `.claude/settings.json` (permissions.deny) and
-# `opencode.jsonc` (permission.bash) — the three harnesses must stay in lockstep.
+# `opencode.jsonc` (permission.bash), `.kimi-code/config-snippet.toml`
+# ([[permission.rules]]) — the four harnesses must stay in lockstep.
 # decision = "forbidden" blocks the command outright, no prompt. Codex splits simple
 # `&&`/`||`/`;`/`|` chains and applies the most restrictive matching rule, so an
 # allowed `git add` cannot smuggle a chained forbidden command.

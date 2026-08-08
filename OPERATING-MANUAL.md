@@ -108,6 +108,23 @@ Notes:
   (expect `"decision": "forbidden"`). Codex hooks and execpolicy are experimental
   upstream — pin the Codex CLI version and treat a version bump like a model bump
   (behavioural change → evals).
+- **Kimi Code global-config bootstrap.** Kimi Code CLI reads a single user-level
+  config file (`~/.kimi-code/config.toml`) and has **no project-level config
+  mechanism** — permission rules and hooks are global-only. The installed
+  `.kimi-code/config-snippet.toml` must therefore be merged into the global config
+  once per machine; until then the Kimi harness runs **without** the kill-switch
+  deny rules and telemetry (fail-open — the opposite of Codex's trust gate). After
+  merging, restart Kimi (or `/reload`) and confirm the deny rules with
+  `/permission`. Kimi hooks fail open on error/timeout, so the permission rules are
+  the primary kill-switch and hooks are telemetry-only. The role skills in
+  `.kimi-code/skills/` and `$commit`/`$worktree-merge` in `.agents/skills/` load
+  per-repo with no trust gate.
+- **ZCode is a companion harness (advisory tier).** ZCode reads the repo's
+  `AGENTS.md` natively (plus a global `~/.zcode/AGENTS.md`) but has no project-level
+  agents, commands, config, or deny-list, and no enforced read-only sub-agents —
+  nothing for the installer to place. Import `.agents/skills/` via Settings →
+  Skills → Import (Symlink mode stays in sync); run gate-chain commits from a CLI
+  harness.
 - **Re-running is idempotent.** The installer refreshes forge-managed files but
   carries forward every *filled* `FORGE:REGION` (a region counts as filled once its
   `forge-init:` instruction comment has been removed — `/forge-init` removes it when
@@ -115,7 +132,7 @@ Notes:
   Manifest state (`init_completed`, `region:` records), existing eval fixtures and
   `.result` baselines, and the `.gitignore` block are all preserved — a re-run on a
   fully initialized repo is a no-op. `grep -rn "forge-init:" .opencode .claude
-  .codex AGENTS.md` lists what is still unfilled.
+  .codex .kimi-code AGENTS.md` lists what is still unfilled.
 - `flock` is absent on stock macOS: the merge falls back to the rule's `mkdir` mutex;
   `brew install flock` enables the primary path.
 
@@ -350,10 +367,13 @@ still catches. Model *version* changes count as behavioural changes — re-run e
 Routing: low risk + strong verification → autonomous. Control changes, releases,
 production infra, secrets, data deletion → at least gated-approval. Destructive git
 (`reset --hard`, `push --force`, history rewrites, `clean -fd`) always requires
-explicit confirmation and is deny-listed in all three harness configs (`.claude/settings.json`
+explicit confirmation and is deny-listed in all four harness configs (`.claude/settings.json`
 and `opencode.jsonc` pattern denies; Codex via execpolicy `forbidden` rules in
-`.codex/rules/forge.rules` — verify with `codex execpolicy check`). Autonomy is earned
-by track record and demoted on failure.
+`.codex/rules/forge.rules` — verify with `codex execpolicy check`; Kimi Code via
+`[[permission.rules]]` deny entries in `.kimi-code/config-snippet.toml`, active only
+after the one-time merge into `~/.kimi-code/config.toml` — verify with `/permission`).
+ZCode has no deny-list mechanism — one more reason it stays advisory-tier. Autonomy is
+earned by track record and demoted on failure.
 
 **Operator halt (kill-switch).** `touch AGENT_HALT` at the main checkout root halts
 every session and worktree (scoped variants: `AGENT_HALT_commit`,
@@ -375,6 +395,7 @@ a control.
 | opencode | `zai/glm-5.2` | `minimax/MiniMax-M3` |
 | Claude Code | `fable` | `opus` |
 | Codex | `gpt-5` | `gpt-4o` / `gpt-4o-mini` |
+| Kimi Code | `k3` | `k3` — single model family, no per-role routing |
 
 Per-agent **temperatures** (opencode) and **reasoning efforts** (Claude Code) carry
 upstream's values: validation/review agents run cold (t=0–0.1 / effort per role),
@@ -382,6 +403,13 @@ implementation slightly warmer (0.2), ideation/design seats hot (`council-seat` 
 Codex agent TOML exposes no temperature; `.codex/agents/*.toml` mirror the Claude Code
 per-agent efforts instead and record the upstream temperature as a provenance comment.
 Codex reviewers additionally run under an *enforced* `sandbox_mode = "read-only"`.
+Kimi Code has no per-skill model/temperature/effort knobs (skills are prompts, not
+sub-agents; effort comes from the global `[thinking]` table), so the strong/weak split
+collapses there — the cheap/authoritative review *separation of duties* survives via
+distinct skills and the read-only `explore` sub-agent, but its *economics* do not.
+Treat a Kimi-only review chain as weaker than the other harnesses' and prefer
+cross-harness `review-final` when the change is control-class. ZCode is fixed on
+GLM-5.2 (companion harness, advisory tier — no sub-agent routing surface at all).
 Delegation *is* routing: the orchestrator does little directly because a subagent is
 where the right model/temperature/effort get selected. Changing this table is a
 control-class change (§5.5).
@@ -412,7 +440,9 @@ control-class change (§5.5).
 **Commands** (installed per repo; identical names on all harnesses where present —
 on Codex, `/commit` and `/worktree-merge` ship as skills in `.agents/skills/`, invoked
 as `$commit` / `$worktree-merge` (Codex deprecated custom prompts in favour of skills;
-list loaded skills with `/skills`)):
+list loaded skills with `/skills`); Kimi Code reads the same `.agents/skills/`
+directory plus the role skills in `.kimi-code/skills/`, invoked as `/skill:<name>` or
+the `/<name>` shorthand when it does not collide with a built-in):
 
 | Command | Purpose |
 |---------|---------|
@@ -444,6 +474,8 @@ list loaded skills with `/skills`)):
 | Review hits the 8-iteration cap | Do not commit; record residual risk and escalate — this is a signal about first-pass quality |
 | A committed unit vanished | Two sessions shared one worktree. Recover via `git reflog` + `cherry-pick`, re-verify; never adopt another session's tree |
 | `run-evals.sh` exits 2 | Missing/malformed fixtures — normal before init Phase 3 |
+| Kimi runs `git push --force` without asking | `.kimi-code/config-snippet.toml` was never merged into `~/.kimi-code/config.toml` — Kimi has no project-level config; merge, `/reload`, verify with `/permission` |
+| Kimi `/skills` missing a forge role | The skill's `SKILL.md` frontmatter lost `name` or `description` — Kimi refuses to parse without both |
 
 **Maintaining forge itself** (this repo): the payload lives in `system/`
 (engine = byte-close to upstream, template = tokenized, seeds = generators). To sync

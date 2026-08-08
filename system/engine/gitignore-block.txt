@@ -11,4 +11,6 @@
 /.tmp/.commit-lock
 # local (uncommitted) plan documents #
 *.local.md
+# kimi code per-checkout local settings (machine-local absolute paths) #
+/.kimi-code/local.toml
 # --- end forge agent system --- #

@@ -23,7 +23,7 @@ design) rather than guessing.
    `init_completed`/`region:` manifest lines; only regions still holding their
    fail-closed default are refreshed from the template. Read the manifest, tell the
    user what is already installed and which regions are filled vs unfilled
-   (`grep -rln "forge-init:" .opencode .claude AGENTS.md` lists files with UNFILLED
+   (`grep -rln "forge-init:" .opencode .claude .codex .kimi-code AGENTS.md` lists files with UNFILLED
    regions), then process ONLY the unfilled ones in Phase 2 and skip existing eval
    fixtures in Phase 3. Do not re-fill filled regions unless the user asks.
 3. Confirm with the user: project name (default: directory name) and default branch
@@ -41,8 +41,8 @@ Run:
 ```
 Review its output. If it reports preserved files (`*.forge-new`), tell the user those
 need manual merge and include them in Phase 5's summary. Verify with `git status` that
-the expected tree appeared (`.opencode/`, `.claude/`, `AGENTS.md`, `CLAUDE.md`,
-`opencode.jsonc`, `.forge-manifest`).
+the expected tree appeared (`.opencode/`, `.claude/`, `.codex/`, `.kimi-code/`,
+`.agents/`, `AGENTS.md`, `CLAUDE.md`, `opencode.jsonc`, `.forge-manifest`).
 
 ## Phase 1.5 — Explore the existing repo (brownfield)
 
@@ -78,7 +78,7 @@ Fill every `<!-- FORGE:REGION ... -->` block **from the Phase 1.5 findings** —
 filled region should be traceable to something the exploration found. Find them all
 first:
 ```bash
-grep -rn "FORGE:REGION" --include="*.md" --include="*.jsonc" --include="*.toml" .opencode .claude .codex AGENTS.md opencode.jsonc 2>/dev/null | grep BEGIN
+grep -rn "FORGE:REGION" --include="*.md" --include="*.jsonc" --include="*.toml" .opencode .claude .codex .kimi-code AGENTS.md opencode.jsonc 2>/dev/null | grep BEGIN
 ```
 
 For each region, replace the default content BETWEEN the BEGIN/END markers. Two
@@ -120,12 +120,14 @@ no-ops for completed work:
 7. `changelog-policy` (in `.opencode/rules/commit-workflow.md`): if the repo keeps a
    changelog, write the upstream-style rule (unreleased section, user-facing test,
    entry format); otherwise keep the explicit "no changelog gate" default.
-8. `agent-project-context` (in `.claude/agents/*.md`, `.opencode/agents/*.md`, and
-   `.codex/agents/*.toml` — in the TOMLs the region sits inside the
-   `developer_instructions` string; edit between the markers, keep valid TOML):
+8. `agent-project-context` (in `.claude/agents/*.md`, `.opencode/agents/*.md`,
+   `.codex/agents/*.toml`, and `.kimi-code/skills/*/SKILL.md` — in the TOMLs the
+   region sits inside the `developer_instructions` string; edit between the markers,
+   keep valid TOML):
    per agent, list this repo's key docs, conventions, module layout, and test commands
-   relevant to that agent's role. Keep it short (3–8 lines each). Fill all three
-   harness copies of each agent identically.
+   relevant to that agent's role. Keep it short (3–8 lines each). Fill all four
+   harness copies of each agent identically (not every agent has the region — the
+   same four roles lack it in every harness copy).
 9. `skill-project-context` (in `.opencode/skills/*/SKILL.md`): same, per skill.
 10. `project-overview`, `project-docs`, `project-policies` (in `AGENTS.md`): write the
     project overview (stack, CI, infra, repo host), the "Document | When to consult"
@@ -138,9 +140,26 @@ no-ops for completed work:
     `python3 -c 'import tomllib,glob; [tomllib.load(open(p,"rb")) for p in glob.glob(".codex/**/*.toml", recursive=True)]'`
     then `codex execpolicy check --rules .codex/rules/forge.rules -- git push --force`
     (expect `forbidden`). Tell the user to open Codex in the repo once and TRUST it —
-    the `.codex/` layer (config, agents, rules, hooks) is skipped until trusted, and
+    the `.codex/` layer (config, agents, rules, hooks) is skipped until trusted —
     and that `/commit` + `/worktree-merge` are available in Codex as skills from
     `.agents/skills/` (`$commit`, `$worktree-merge` — list with `/skills`).
+13. Kimi Code (if the `kimi` CLI is installed): validate the payload —
+    `python3 -c 'import tomllib; tomllib.load(open(".kimi-code/config-snippet.toml","rb"))'`
+    and confirm every `.kimi-code/skills/*/SKILL.md` frontmatter carries `name` and
+    `description` (Kimi refuses to load a skill without both). Remind the user to
+    merge `.kimi-code/config-snippet.toml` into `~/.kimi-code/config.toml` — Kimi
+    Code has no project-level config file, so the kill-switch deny rules and
+    Stop-hook telemetry are inert until that one-time merge (then `/reload`, and
+    confirm with `/permission`). The role skills load automatically from
+    `.kimi-code/skills/` (list with `/skills`); reviewer roles must run on the
+    read-only `explore` sub-agent, since a skill prompt cannot tool-enforce
+    read-only.
+14. ZCode: no per-project payload to validate — ZCode reads the repo's `AGENTS.md`
+    natively and has no project-level agent/command/config mechanism. If the user
+    works in ZCode, point them at Settings → Skills → Import to pull
+    `.agents/skills/` in (Symlink mode stays in sync with the repo), and note that
+    ZCode is a companion harness at the advisory tier (no enforced read-only
+    sub-agents, no project deny-list): run gate-chain commits from a CLI harness.
 
 Before leaving Phase 2, verify the customization against reality (protocol §6): run
 the assembled validation and Gate-1 commands once on the clean tree — they must pass
@@ -173,7 +192,7 @@ never autonomous — see `.opencode/rules/risk-authority-classification.md`):
    (`git add -N . && git diff` or stage explicitly and use `git diff --cached`) with the
    review prompt from `commit-workflow.md` Step 4. Its verdict is binding.
 3. Verify no region is still unfilled unless the user chose to defer it:
-   `grep -rn "forge-init:" .opencode .claude AGENTS.md` must return nothing (or only
+   `grep -rn "forge-init:" .opencode .claude .codex .kimi-code AGENTS.md` must return nothing (or only
    the user's explicitly deferred regions — list those as residual risk).
 4. Update `.forge-manifest`: set `init_completed: true` and add a
    `region: <name> (<file>)` line per filled region (the installer carries these

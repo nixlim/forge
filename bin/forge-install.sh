@@ -221,7 +221,7 @@ touch "${TARGET}/.tmp/.gitkeep"
 
 # --- leftover-token check (regions are HTML comments and are expected) -------
 
-LEFTOVERS="$(grep -rl '{{FORGE_' "${TARGET}/.opencode" "${TARGET}/.claude" "${TARGET}/.codex" "${TARGET}/.agents" "${TARGET}/AGENTS.md" 2>/dev/null || true)"
+LEFTOVERS="$(grep -rl '{{FORGE_' "${TARGET}/.opencode" "${TARGET}/.claude" "${TARGET}/.codex" "${TARGET}/.kimi-code" "${TARGET}/.agents" "${TARGET}/AGENTS.md" 2>/dev/null || true)"
 [ -z "${LEFTOVERS}" ] || {
     echo "WARNING: unsubstituted {{FORGE_ tokens remain in:" >&2
     echo "${LEFTOVERS}" >&2
@@ -268,4 +268,13 @@ echo "  3. Codex users: open Codex once in this repo and TRUST it when prompted 
 echo "     until trusted, Codex skips the entire .codex/ layer (config, agents,"
 echo "     rules, hooks) by design. Verify the kill-switch afterwards with:"
 echo "       codex execpolicy check --rules .codex/rules/forge.rules -- git push --force"
-echo "  4. Commit the installed system (it is a control-class change: gated approval)."
+echo "  4. Kimi Code users: merge .kimi-code/config-snippet.toml into"
+echo "     ~/.kimi-code/config.toml — Kimi has no project-level config file, so the"
+echo "     kill-switch deny rules and Stop-hook telemetry only take effect after the"
+echo "     one-time merge (then restart or /reload, and confirm with /permission)."
+echo "     The forge role skills and \$commit / \$worktree-merge load automatically"
+echo "     from .kimi-code/skills/ and .agents/skills/ (list with /skills)."
+echo "  5. ZCode users: nothing to install — ZCode reads AGENTS.md natively. Import"
+echo "     the skills in .agents/skills/ via Settings → Skills if wanted (companion"
+echo "     harness, advisory tier: see OPERATING-MANUAL.md)."
+echo "  6. Commit the installed system (it is a control-class change: gated approval)."

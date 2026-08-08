@@ -61,6 +61,23 @@
 #     template/.agents/skills/{commit,worktree-merge}/SKILL.md — Codex skills, bodies
 #     from .claude/commands/* (Codex deprecated custom prompts). When syncing
 #     upstream agent/command changes, re-derive the .codex copies to match.
+#   - template/.kimi-code/ is FORGE-ORIGINAL (no upstream counterpart, 2026-07-18):
+#     fourth harness, Kimi Code CLI (Moonshot). Kimi has no custom sub-agent
+#     registry (built-ins coder/explore/plan only), so the 11 DVRR roles ship as
+#     project skills in .kimi-code/skills/<role>/SKILL.md (generated from
+#     .claude/agents/*.md, bodies verbatim; frontmatter name+description are
+#     mandatory for Kimi's parser; reviewer roles documented to run on the
+#     read-only `explore` sub-agent — no per-skill model/temperature knobs, k3
+#     single-family). Kimi has NO project-level config: the deny-list + Stop-hook
+#     telemetry port lives in .kimi-code/config-snippet.toml, merged once per
+#     machine into ~/.kimi-code/config.toml (fail-open until merged; Kimi hooks
+#     fail open by design, so permission rules are the primary kill-switch).
+#     .agents/skills/{commit,worktree-merge} are shared with Codex (both read the
+#     cross-tool ~/.agents and repo .agents dirs). ZCode (Z.ai desktop ADE) is a
+#     companion harness at the advisory tier: reads AGENTS.md natively, no
+#     project-level agents/commands/config/deny-list, user-level-only skills
+#     imported via its Settings UI. When syncing upstream agent changes, re-derive
+#     the .kimi-code skill copies to match.
 #   - Default-branch substitution: all files keep upstream's literal `master`; the
 #     installer rewrites branch references when the target repo's default branch differs
 #     (recorded in the install manifest).

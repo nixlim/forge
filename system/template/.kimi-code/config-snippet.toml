@@ -1,0 +1,76 @@
+# {{FORGE_PROJECT_NAME}} Kimi Code CLI configuration snippet (forge)
+#
+# MERGE THIS INTO ~/.kimi-code/config.toml — do NOT expect it to load from here.
+# Kimi Code CLI reads a single user-level config file and has no project-level
+# config mechanism (verified against the Kimi Code CLI docs, 2026-07-18): permission
+# rules and hooks are global-only. This file is the fourth-harness port of the forge
+# kill-switch deny-list (`.claude/settings.json` permissions.deny, `opencode.jsonc`
+# permission.bash, `.codex/rules/forge.rules`) — the four harnesses must stay in
+# lockstep. Merging it globally is safe beyond this repo: every deny-listed command
+# is universally destructive, and the hooks below are repo-relative, so in repos
+# without the forge layer they exit non-zero and Kimi's fail-open hook semantics
+# ignore them.
+#
+# Caveats (recorded in OPERATING-MANUAL.md §Kimi):
+#   - Kimi hooks FAIL OPEN on error/timeout — the [[permission.rules]] entries are
+#     the primary kill-switch; hooks are telemetry/notification only.
+#   - Rules are ordered; put these deny rules BEFORE any broad allow rules.
+#   - Changing this snippet is a control-class change: evaluation harness +
+#     review-final + explicit human approval.
+#
+# After merging, restart Kimi (or run /reload) and verify with /permission that the
+# deny rules are active.
+
+[[permission.rules]]
+decision = "deny"
+pattern = "Bash(git push --force*)"
+reason = "forge kill-switch: force pushes are deny-listed (shared-history rewrite; linear-history invariant)"
+
+[[permission.rules]]
+decision = "deny"
+pattern = "Bash(git reset --hard*)"
+reason = "forge kill-switch: destructive working-tree reset is deny-listed"
+
+[[permission.rules]]
+decision = "deny"
+pattern = "Bash(git clean -fd*)"
+reason = "forge kill-switch: bulk deletion of untracked files is deny-listed"
+
+[[permission.rules]]
+decision = "deny"
+pattern = "Bash(rm -rf .)"
+reason = "forge kill-switch: recursive deletion of the repo root is deny-listed"
+
+[[permission.rules]]
+decision = "deny"
+pattern = "Bash(rm -rf ..)"
+reason = "forge kill-switch: recursive deletion of the parent directory is deny-listed"
+
+[[permission.rules]]
+decision = "deny"
+pattern = "Bash(rm -rf ~)"
+reason = "forge kill-switch: recursive deletion of the home directory is deny-listed"
+
+[[permission.rules]]
+decision = "deny"
+pattern = "Bash(rm -rf /)"
+reason = "forge kill-switch: recursive deletion of the filesystem root is deny-listed"
+
+[[permission.rules]]
+decision = "deny"
+pattern = "Bash(rm -rf /*)"
+reason = "forge kill-switch: recursive deletion of the filesystem root is deny-listed"
+
+# Stop-hook telemetry + notification — parity with .claude/settings.json and
+# .codex/hooks.json. Hooks run in the session's project directory, so the
+# repo-relative telemetry script resolves only inside forge-installed repos.
+
+[[hooks]]
+event = "Stop"
+command = "osascript -e 'display notification \"Task completed\" with title \"Kimi Code — {{FORGE_PROJECT_NAME}}\"' >/dev/null 2>&1 || true"
+timeout = 10
+
+[[hooks]]
+event = "Stop"
+command = "bash .opencode/scripts/aggregate-telemetry.sh .tmp/decisions --csv .tmp/telemetry-latest.csv >/dev/null 2>&1 || true"
+timeout = 60
